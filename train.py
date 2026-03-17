@@ -350,6 +350,11 @@ def main():
     # Set seed
     set_seed(config["training"]["seed"])
 
+    # Enforce NVIDIA GPU requirement
+    if not torch.cuda.is_available() or torch.version.cuda is None:
+        print("Error: An NVIDIA GPU is required for training. Aborting.")
+        sys.exit(1)
+
     # Print configuration
     print("=" * 60)
     print(f"Flow Matching — {args.model.upper()} Model")
