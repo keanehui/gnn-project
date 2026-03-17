@@ -1,0 +1,72 @@
+# ============================================================
+# Flow Matching for Time-Series Forecasting — Configuration
+# ============================================================
+
+# --- Dataset ---
+data:
+  dataset_dir: "data/raw"
+  sampling_rate: 12000        # Hz (CWRU 12k Drive End)
+  context_length: 256         # Number of past timesteps as input
+  prediction_horizon: 64      # Number of future timesteps to predict
+  stride: 64                  # Sliding window stride
+  train_ratio: 0.7
+  val_ratio: 0.15
+  test_ratio: 0.15
+  fault_types:                # Which fault conditions to use
+    - "normal"
+    - "IR007"                 # Inner race fault 0.007"
+    - "B007"                  # Ball fault 0.007"
+    - "OR007"                 # Outer race fault 0.007"
+
+# --- TCN Architecture ---
+tcn:
+  in_channels: 1              # Univariate time series
+  hidden_channels: 256
+  num_layers: 6
+  kernel_size: 3
+  dropout: 0.2
+  time_embed_dim: 64          # Sinusoidal time embedding dimension
+
+# --- Flow Matching ---
+flow_matching:
+  # Baseline model: Gaussian N(0,I) prior
+  # Improved model: OU process prior
+  sigma_min: 1.0e-4           # Minimum noise for numerical stability
+  ode_solver: "euler"         # Fixed-step Euler for clean NFE control
+
+# --- OU Prior Parameters ---
+ou_prior:
+  theta: 1.0                  # Mean reversion speed
+  mu: 0.0                     # Long-term mean
+  sigma: 0.5                  # Volatility
+  n_steps: 100                # Discretization steps for OU sampling
+
+# --- Optimal Transport ---
+optimal_transport:
+  enabled: true               # Use OT coupling for improved model
+  reg: 0.1                    # Entropic regularization (Sinkhorn)
+  max_iter: 100               # Max Sinkhorn iterations
+
+# --- Training ---
+training:
+  seed: 42
+  epochs: 500
+  batch_size: 128
+  learning_rate: 5.0e-4
+  weight_decay: 1.0e-5
+  scheduler: "cosine"         # cosine | step | none
+  cosine_T_max: 500           # Expected training length for cosine LR decay
+  warmup_epochs: 10
+  grad_clip_norm: 1.0
+  mixed_precision: true       # torch.cuda.amp
+  num_workers: 4
+  output_dir: "outputs"
+  eval_every: 5               # Evaluate on val set every N epochs
+  early_stopping_patience: 30  # Stop if val loss doesn't improve for N epochs
+
+# --- NFE Ablation ---
+ablation:
+  nfe_steps: [2, 4, 8, 16, 32]
+  num_eval_samples: 256       # Samples per NFE evaluation
+  latency_warmup_iters: 10    # GPU warmup iterations before timing
+  latency_measure_iters: 100  # Iterations to average latency over
