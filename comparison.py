@@ -97,6 +97,11 @@ def run_ablation(
         for nfe in nfe_steps:
             print(f"\n  NFE = {nfe}:")
 
+            # Support both legacy and current config key names.
+            n_metric_samples = ablation_cfg.get(
+                "n_samples_for_metrics", ablation_cfg.get("num_eval_samples", 10)
+            )
+
             # Generate samples for metrics
             all_preds = []
             all_targets = []
@@ -105,7 +110,7 @@ def run_ablation(
                 target = target.to(device)
                 # Generate multiple samples per context for CRPS
                 preds_batch = []
-                for _ in range(ablation_cfg["n_samples_for_metrics"]):
+                for _ in range(n_metric_samples):
                     preds_batch.append(model.sample(context, nfe=nfe).cpu().numpy())
                 all_preds.append(np.stack(preds_batch, axis=1)) # (batch_size, n_samples, seq_len, 1)
                 all_targets.append(target.cpu().numpy())
@@ -115,9 +120,13 @@ def run_ablation(
 
             # Accuracy metrics
             mean_preds = all_preds.mean(axis=1) # (num_total_samples, seq_len, 1)
-            mae_val = mae(mean_preds, all_targets)
-            rmse_val = rmse(mean_preds, all_targets)
-            crps_val = crps_gaussian(all_preds, all_targets)
+            mean_preds_t = torch.from_numpy(mean_preds).float()
+            all_targets_t = torch.from_numpy(all_targets).float()
+            all_preds_t = torch.from_numpy(np.transpose(all_preds, (1, 0, 2, 3))).float()
+
+            mae_val = mae(mean_preds_t, all_targets_t)
+            rmse_val = rmse(mean_preds_t, all_targets_t)
+            crps_val = crps_gaussian(all_preds_t, all_targets_t)
 
             print(f"    MAE:  {mae_val:.6f}")
             print(f"    RMSE: {rmse_val:.6f}")
@@ -248,7 +257,7 @@ def main():
 
         # Sample prediction plots
         generate_sample_plots(
-            config, args.checkpoint_baseline, args.checkpoint_improved, device
+            config, args.checkpoint_baseline, args.checkpoint_improved, device, results_dir
         )
 
     # Print summary table

@@ -64,10 +64,17 @@ class Trainer:
         self.model = model.to(self.device)
 
         # PyTorch 2.0+ Compiler for significant speedups
-        if hasattr(torch, "compile") and self.device.type == "cuda":
+        if (
+            self.device.type == "cuda"
+            and hasattr(torch, "compile")
+            and self.train_cfg.get("enable_compile", True)
+        ):
             print("  Optimizing model with torch.compile()...")
             # mode="reduce-overhead" is great for fast ODE solvers
-            self.model = torch.compile(self.model, mode="reduce-overhead")
+            try:
+                self.model = torch.compile(self.model, mode="reduce-overhead")
+            except Exception as e:
+                print(f"  [WARNING] torch.compile failed, using eager mode: {e}")
 
         self.train_loader = train_loader
         self.val_loader = val_loader
@@ -111,6 +118,9 @@ class Trainer:
         self.ckpt_dir = os.path.join(self.train_cfg["output_dir"], model_type, "model")
         os.makedirs(self.ckpt_dir, exist_ok=True)
 
+        # Save latest training state checkpoint regularly, not only best model.
+        self.latest_ckpt_name = "latest.pt"
+
         # Training state
         self.start_epoch = 0
         self.global_step = 0
@@ -150,7 +160,7 @@ class Trainer:
                 context = context.to(self.device, non_blocking=True)
                 target = target.to(self.device, non_blocking=True)
 
-                self.optimizer.zero_grad()
+                self.optimizer.zero_grad(set_to_none=True)
 
                 if self.use_amp:
                     with torch.amp.autocast("cuda"):
@@ -193,7 +203,10 @@ class Trainer:
                     self.epochs_without_improvement = 0
                     self.save_checkpoint(epoch, "best.pt")
                 else:
-                    self.epochs_without_improvement += self.train_cfg.get("eval_every", 5)
+                    self.epochs_without_improvement += 1
+
+                # Always save latest checkpoint so resume/output artifacts are guaranteed.
+                self.save_checkpoint(epoch, self.latest_ckpt_name)
 
                 # Log to CSV
                 self._log_csv(epoch + 1, avg_train_loss, val_loss)
@@ -202,7 +215,7 @@ class Trainer:
                 if self.epochs_without_improvement >= self.patience:
                     print(
                         f"\n  Early stopping at epoch {epoch+1}: "
-                        f"no improvement for {self.epochs_without_improvement} epochs."
+                        f"no improvement for {self.epochs_without_improvement} eval rounds."
                     )
                     break
             else:
@@ -213,6 +226,11 @@ class Trainer:
                 )
                 # Log to CSV (val_loss not evaluated this epoch)
                 self._log_csv(epoch + 1, avg_train_loss, None)
+
+        # Guarantee a final checkpoint exists even if no validation step was reached.
+        latest_path = os.path.join(self.ckpt_dir, self.latest_ckpt_name)
+        if not os.path.exists(latest_path):
+            self.save_checkpoint(max(self.start_epoch, 0), self.latest_ckpt_name)
 
         print(f"\nTraining complete. Best val loss: {self.best_val_loss:.4f}")
         print(f"Training log saved to: {self.csv_path}")
@@ -303,6 +321,7 @@ def set_seed(seed: int) -> None:
         # Enable TensorFloat-32 (TF32) for massive matmul speedups on Ampere GPUs (RTX 3090)
         torch.backends.cuda.matmul.allow_tf32 = True
         torch.backends.cudnn.allow_tf32 = True
+        torch.set_float32_matmul_precision("high")
 
 
 def main():

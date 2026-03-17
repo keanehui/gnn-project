@@ -7,6 +7,7 @@ train/val/test splits.
 """
 
 import os
+import sys
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
@@ -209,27 +210,40 @@ def create_dataloaders(
         f"val: {len(val_indices)}, test: {len(test_indices)}"
     )
 
+    requested_workers = int(train_cfg.get("num_workers", 0))
+    is_colab = ("google.colab" in sys.modules) or ("COLAB_GPU" in os.environ)
+    num_workers = 0 if is_colab else requested_workers
+    pin_memory = torch.cuda.is_available()
+
+    loader_kwargs = {
+        "batch_size": train_cfg["batch_size"],
+        "num_workers": num_workers,
+        "pin_memory": pin_memory,
+    }
+    if num_workers > 0:
+        loader_kwargs["persistent_workers"] = True
+        loader_kwargs["prefetch_factor"] = 2
+
+    print(
+        f"DataLoader config — workers={num_workers} "
+        f"(requested={requested_workers}, colab={is_colab}), pin_memory={pin_memory}"
+    )
+
     train_loader = DataLoader(
         Subset(dataset, train_indices),
-        batch_size=train_cfg["batch_size"],
         shuffle=True,
-        num_workers=train_cfg["num_workers"],
-        pin_memory=True,
         drop_last=True,
+        **loader_kwargs,
     )
     val_loader = DataLoader(
         Subset(dataset, val_indices),
-        batch_size=train_cfg["batch_size"],
         shuffle=False,
-        num_workers=train_cfg["num_workers"],
-        pin_memory=True,
+        **loader_kwargs,
     )
     test_loader = DataLoader(
         Subset(dataset, test_indices),
-        batch_size=train_cfg["batch_size"],
         shuffle=False,
-        num_workers=train_cfg["num_workers"],
-        pin_memory=True,
+        **loader_kwargs,
     )
 
     return train_loader, val_loader, test_loader, dataset
