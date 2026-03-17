@@ -17,7 +17,7 @@ echo "To view live progress, run: tail -f $LOG_FILE"
 echo "=========================================================="
 
 # Run with nohup and redirect stdout/stderr to the log file
-nohup python train.py --model "$MODEL" > "$LOG_FILE" 2>&1 &
+nohup python3 train.py --model "$MODEL" > "$LOG_FILE" 2>&1 &
 
 echo "Training process started in the background (PID: $!)."
 echo "You can now safely close your terminal."
