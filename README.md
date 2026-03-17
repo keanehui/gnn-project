@@ -142,7 +142,7 @@ Copy outputs:
 !python3 train.py --model improved --resume outputs/improved/model/best.pt
 ```
 
-- Background scripts (like `run_training_background.sh`) are not needed in Colab.
+- Background training scripts are not needed in Colab.
 
 ## Quick Start (Local)
 
@@ -176,14 +176,6 @@ python3 data/download.py
 python3 train.py --model baseline
 ```
 
-**Background Training (Safe to disconnect):**
-
-```bash
-./run_training_background.sh baseline
-```
-
-_To view the live progress, run:_ `tail -f baseline_training.log`
-
 ---
 
 ### Part 2: Improved Model Training, Evaluation & Ablation Study (Min-Han Yeh)
@@ -198,14 +190,6 @@ _To view the live progress, run:_ `tail -f baseline_training.log`
 ```bash
 python3 train.py --model improved
 ```
-
-**Background Training (Safe to disconnect):**
-
-```bash
-./run_training_background.sh improved
-```
-
-_To view the live progress, run:_ `tail -f improved_training.log`
 
 #### 5. Evaluate Models
 
