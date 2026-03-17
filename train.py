@@ -147,6 +147,7 @@ class Trainer:
         print(f"  Batch size: {self.train_cfg['batch_size']}")
         print(f"  Learning rate: {self.train_cfg['learning_rate']}")
         print(f"  Mixed precision: {self.use_amp}")
+        print(f"  Early stopping patience: {self.patience} eval rounds")
         print(f"{'='*60}\n")
 
         for epoch in range(self.start_epoch, total_epochs):
@@ -191,19 +192,21 @@ class Trainer:
             if (epoch + 1) % self.train_cfg.get("eval_every", 5) == 0:
                 val_loss = self.validate()
 
-                print(
-                    f"  Epoch {epoch+1}: train_loss={avg_train_loss:.4f}, "
-                    f"val_loss={val_loss:.4f}, "
-                    f"lr={self.optimizer.param_groups[0]['lr']:.2e}"
-                )
-
                 # Save best model
                 if val_loss < self.best_val_loss:
                     self.best_val_loss = val_loss
                     self.epochs_without_improvement = 0
                     self.save_checkpoint(epoch, "best.pt")
+                    improvement_status = "✓ IMPROVED"
                 else:
                     self.epochs_without_improvement += 1
+                    improvement_status = f"no improvement ({self.epochs_without_improvement}/{self.patience})"
+
+                print(
+                    f"  Epoch {epoch+1}: train_loss={avg_train_loss:.4f}, "
+                    f"val_loss={val_loss:.4f}, "
+                    f"lr={self.optimizer.param_groups[0]['lr']:.2e} | {improvement_status}"
+                )
 
                 # Always save latest checkpoint so resume/output artifacts are guaranteed.
                 self.save_checkpoint(epoch, self.latest_ckpt_name)
@@ -214,9 +217,13 @@ class Trainer:
                 # Early stopping check
                 if self.epochs_without_improvement >= self.patience:
                     print(
-                        f"\n  Early stopping at epoch {epoch+1}: "
-                        f"no improvement for {self.epochs_without_improvement} eval rounds."
-                    )
+                        f"\n{'='*60}")
+                    print(f"  ⚠️  EARLY STOPPING TRIGGERED")
+                    print(f"  Epoch {epoch+1}: validation loss did not improve")
+                    print(f"  No improvement for {self.epochs_without_improvement} consecutive eval rounds")
+                    print(f"  (patience limit: {self.patience} rounds)")
+                    print(f"  Best validation loss: {self.best_val_loss:.6f}")
+                    print(f"{'='*60}\n")
                     break
             else:
                 print(
