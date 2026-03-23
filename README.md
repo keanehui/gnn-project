@@ -25,8 +25,9 @@ The key hypothesis: the OU-prior model at **4 NFEs** achieves competitive accura
 │   └── dataset.py                # PyTorch Dataset + preprocessing
 ├── models/
 │   ├── tcn.py                    # TCN velocity field network
-│   ├── flow_matching.py          # Flow Matching (Baseline + Improved)
-│   └── ou_prior.py               # OU prior + OT coupling
+│   ├── flow_matching.py          # Baseline Flow Matching + model factory
+│   ├── improved.py               # Improved Flow Matching (OU prior + OT)
+│   └── ou_prior.py               # OU prior sampler + OT coupling
 ├── comparison.py                 # NFE ablation study
 ├── train.py                      # Training pipeline (Trainer, AMP, checkpoints, CSV logging)
 └── evaluate.py                   # Unified evaluation, metrics, and visualization
@@ -34,7 +35,7 @@ The key hypothesis: the OU-prior model at **4 NFEs** achieves competitive accura
 Outputs generated during training/evaluation:
 outputs/
 ├── baseline/
-│   ├── model/                    # best.pt and training_log.csv
+│   ├── model/                    # best.pt, latest.pt, and training_log.csv
 │   └── evaluate/                 # evaluation plots and metrics
 ├── improved/
 │   ├── model/
@@ -106,7 +107,7 @@ Model checkpoints and logs are saved under `outputs/baseline/model` and `outputs
 !python3 evaluate.py --checkpoint outputs/improved/model/best.pt --model improved --nfe 4 --plot
 ```
 
-Evaluation figures and metrics are saved under each model folder in `outputs/.../evaluate`.
+Evaluation figures and metrics (JSON + plots) are saved under each model folder in `outputs/.../evaluate`.
 
 ### 7. Run NFE ablation
 
@@ -138,8 +139,8 @@ Copy outputs:
 - If Colab disconnects, rerun setup cells and continue training with:
 
 ```bash
-!python3 train.py --model baseline --resume outputs/baseline/model/best.pt
-!python3 train.py --model improved --resume outputs/improved/model/best.pt
+!python3 train.py --model baseline --resume outputs/baseline/model/latest.pt
+!python3 train.py --model improved --resume outputs/improved/model/latest.pt
 ```
 
 - Background training scripts are not needed in Colab.
@@ -159,7 +160,7 @@ pip install -r requirements.txt
 #### 2. Download data
 
 - **Reads:** Internet source (CWRU bearing dataset URL).
-- **Outputs:** Raw and processed datasets saved to the `data/cwru_data/` and `data/processed/` directories.
+- **Outputs:** Raw `.mat` files saved to the `data/raw/` directory.
 
 ```bash
 python3 data/download.py
@@ -167,7 +168,7 @@ python3 data/download.py
 
 #### 3. Train Baseline Model
 
-- **Reads:** Configuration from `config.yaml` and the datasets from `data/processed/`.
+- **Reads:** Configuration from `config.yaml` and the datasets from `data/raw/`.
 - **Outputs:** Model checkpoints (e.g., `best.pt`) and training logs saved to `outputs/baseline/model/`.
 
 **Foreground Training (Terminal stays open):**
@@ -182,7 +183,7 @@ python3 train.py --model baseline
 
 #### 4. Train Improved Model
 
-- **Reads:** Configuration from `config.yaml` and the datasets from `data/processed/`.
+- **Reads:** Configuration from `config.yaml` and the datasets from `data/raw/`.
 - **Outputs:** Model checkpoints (e.g., `best.pt`) and training logs saved to `outputs/improved/model/`.
 
 **Foreground Training:**
@@ -220,10 +221,10 @@ All hyperparameters are centralized in `config.yaml`. Key settings:
 | -------------------------- | ------- | --------------------------- |
 | `context_length`           | 256     | Past timesteps as input     |
 | `prediction_horizon`       | 64      | Future timesteps to predict |
-| `tcn.hidden_channels`      | 128     | TCN hidden dimension        |
+| `tcn.hidden_channels`      | 256     | TCN hidden dimension        |
 | `tcn.num_layers`           | 6       | Number of TCN blocks        |
 | `ou_prior.theta`           | 1.0     | OU mean reversion speed     |
-| `training.epochs`          | 200     | Training epochs             |
+| `training.epochs`          | 500     | Training epochs             |
 | `training.batch_size`      | 128     | Batch size                  |
 | `training.mixed_precision` | true    | Use AMP on NVIDIA GPUs      |
 

@@ -7,6 +7,7 @@ Usage:
 """
 
 import argparse
+import json
 import os
 import sys
 import time
@@ -310,16 +311,23 @@ def plot_sample_predictions(
 
 
 def plot_training_loss(
+    train_epochs: List[int],
     train_losses: List[float],
+    val_epochs: Optional[List[int]] = None,
     val_losses: Optional[List[float]] = None,
     save_path: str = "training_loss.png",
 ) -> None:
-    """Plot training (and optionally validation) loss curves."""
+    """Plot training (and optionally validation) loss curves.
+
+    Uses explicit epoch arrays so that sparse validation losses
+    (recorded every N epochs) are plotted at the correct x-positions.
+    """
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     fig, ax = plt.subplots(figsize=(8, 5))
-    ax.plot(train_losses, label="Train Loss", linewidth=2)
-    if val_losses:
-        ax.plot(val_losses, label="Val Loss", linewidth=2)
+    ax.plot(train_epochs, train_losses, label="Train Loss", linewidth=2)
+    if val_losses and val_epochs:
+        ax.plot(val_epochs, val_losses, marker="o", markersize=3,
+                label="Val Loss", linewidth=2)
     ax.set_xlabel("Epoch")
     ax.set_ylabel("Loss")
     ax.set_title("Training Progress")
@@ -413,6 +421,24 @@ def main():
     print(f"  Latency: {latency['mean_ms']:.3f} ± {latency['std_ms']:.3f} ms")
     print(f"{'='*40}")
 
+    # Save metrics to JSON for report writing
+    metrics_output = {
+        "model": args.model,
+        "nfe": args.nfe,
+        "n_samples": args.n_samples,
+        "mae": metrics_res["mae"],
+        "rmse": metrics_res["rmse"],
+        "crps": metrics_res["crps"],
+        "latency_mean_ms": latency["mean_ms"],
+        "latency_std_ms": latency["std_ms"],
+        "latency_min_ms": latency["min_ms"],
+        "latency_max_ms": latency["max_ms"],
+    }
+    metrics_json_path = os.path.join(eval_dir, f"metrics_nfe{args.nfe}.json")
+    with open(metrics_json_path, "w") as f:
+        json.dump(metrics_output, f, indent=2)
+    print(f"Metrics saved to: {metrics_json_path}")
+
     # Sample plots
     if args.plot:
         context, target = next(iter(test_loader))
@@ -436,6 +462,36 @@ def main():
             save_path=plot_path,
             title=f"{args.model} (NFE={args.nfe})",
         )
+
+        # Plot training loss curves from CSV log if available
+        model_dir = os.path.join(config["training"].get("output_dir", "outputs"), args.model, "model")
+        csv_log_path = os.path.join(model_dir, "training_log.csv")
+        if os.path.exists(csv_log_path):
+            log_df = pd.read_csv(csv_log_path)
+
+            # Train losses: every row has a value
+            train_mask = log_df["train_loss"].notna()
+            train_epochs = log_df.loc[train_mask, "epoch"].astype(int).tolist()
+            train_losses = log_df.loc[train_mask, "train_loss"].tolist()
+
+            # Val losses: only present every eval_every epochs
+            val_epochs = None
+            val_losses = None
+            if "val_loss" in log_df.columns:
+                val_mask = log_df["val_loss"].notna() & (log_df["val_loss"] != "")
+                if val_mask.any():
+                    val_epochs = log_df.loc[val_mask, "epoch"].astype(int).tolist()
+                    val_losses = pd.to_numeric(log_df.loc[val_mask, "val_loss"]).tolist()
+
+            plot_training_loss(
+                train_epochs=train_epochs,
+                train_losses=train_losses,
+                val_epochs=val_epochs,
+                val_losses=val_losses,
+                save_path=os.path.join(eval_dir, "training_loss.png"),
+            )
+        else:
+            print(f"Training log not found at {csv_log_path}, skipping loss curve plot.")
 
 
 if __name__ == "__main__":
