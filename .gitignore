@@ -3,11 +3,6 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# PyTorch and Models
-*.pt
-*.pth
-*.onnx
-
 # Project specific data & outputs
 data/raw/
 data/processed/
