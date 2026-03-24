@@ -90,6 +90,7 @@ This should create:
 
 If working locally instead of Colab, use the same commands without the `!`.
 When installing packages, prefer `python3 -m pip install -r requirements.txt` so the packages go into the same Python interpreter used by `python3 train.py` and `python3 evaluate.py`.
+If `which python3` shows `/usr/bin/python3` on macOS, your shell is using the system Python instead of your Conda/Python environment. In that case, either fix your shell setup first or run the project with your Conda interpreter path explicitly, for example `/opt/miniconda3/bin/python3`.
 All command blocks below are written in terminal style; if you run them inside a Colab cell, add `!` in front of each command.
 
 ### Step 2. Both Teammates Follow the Same Training Rule

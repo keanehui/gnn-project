@@ -1,0 +1,53 @@
+============================================================
+Flow Matching — BASELINE Model
+============================================================
+Config: config.yaml
+Epochs: 500
+Batch size: 128
+Learning rate: 0.0005
+Context length: 256
+Prediction horizon: 64
+CUDA available: True
+GPU: NVIDIA GeForce RTX 3090
+============================================================
+
+Loading data...
+CWRUDataset: 9510 samples, context=256, horizon=64, signal_length=609765
+  normal  : 3807 windows -> train=2664, val=571, test=572
+  IR007   : 1890 windows -> train=1323, val=283, test=284
+  B007    : 1911 windows -> train=1337, val=286, test=288
+  OR007   : 1902 windows -> train=1331, val=285, test=286
+Total — train: 6655, val: 1425, test: 1430
+  Train batches: 51
+  Val batches:   12
+  Test batches:  12
+
+Building baseline model...
+  Trainable parameters: 2,615,233
+Using device: cuda
+  GPU: NVIDIA GeForce RTX 3090
+  Memory: 25.4 GB
+Traceback (most recent call last):
+  File "train.py", line 398, in <module>
+    main()
+  File "train.py", line 387, in main
+    trainer = Trainer(
+  File "train.py", line 64, in __init__
+    self.model = model.to(self.device)
+  File "/home/keane_hui/.local/lib/python3.8/site-packages/torch/nn/modules/module.py", line 1174, in to
+    return self._apply(convert)
+  File "/home/keane_hui/.local/lib/python3.8/site-packages/torch/nn/modules/module.py", line 780, in _apply
+    module._apply(fn)
+  File "/home/keane_hui/.local/lib/python3.8/site-packages/torch/nn/modules/module.py", line 780, in _apply
+    module._apply(fn)
+  File "/home/keane_hui/.local/lib/python3.8/site-packages/torch/nn/modules/module.py", line 780, in _apply
+    module._apply(fn)
+  File "/home/keane_hui/.local/lib/python3.8/site-packages/torch/nn/modules/module.py", line 805, in _apply
+    param_applied = fn(param)
+  File "/home/keane_hui/.local/lib/python3.8/site-packages/torch/nn/modules/module.py", line 1160, in convert
+    return t.to(
+RuntimeError: CUDA error: out of memory
+CUDA kernel errors might be asynchronously reported at some other API call, so the stacktrace below might be incorrect.
+For debugging consider passing CUDA_LAUNCH_BLOCKING=1
+Compile with `TORCH_USE_CUDA_DSA` to enable device-side assertions.
+
