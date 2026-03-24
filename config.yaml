@@ -50,8 +50,8 @@ optimal_transport:
 # --- Training ---
 training:
   seed: 42
-  epochs: 500
-  batch_size: 128
+  epochs: 500                  # Max epochs; early stopping usually ends earlier
+  batch_size: 128              # Safe starting point for Colab L4
   learning_rate: 5.0e-4
   weight_decay: 1.0e-5
   scheduler: "cosine"         # cosine | step | none
@@ -59,7 +59,8 @@ training:
   warmup_epochs: 10
   grad_clip_norm: 1.0
   mixed_precision: true       # torch.cuda.amp
-  num_workers: 4
+  enable_compile: true        # Falls back to eager mode automatically if compile fails
+  num_workers: 4              # Local setting; Colab is forced to 0 workers for stability
   output_dir: "outputs"
   eval_every: 5               # Evaluate on val set every N epochs
   early_stopping_patience: 30  # Stop if val loss doesn't improve for N epochs
@@ -67,6 +68,6 @@ training:
 # --- NFE Ablation ---
 ablation:
   nfe_steps: [2, 4, 8, 16, 32]
-  num_eval_samples: 256       # Samples per NFE evaluation
+  num_eval_samples: 64        # Enough for stable CRPS without making Colab ablation too slow
   latency_warmup_iters: 10    # GPU warmup iterations before timing
   latency_measure_iters: 100  # Iterations to average latency over

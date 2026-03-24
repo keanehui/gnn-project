@@ -121,10 +121,12 @@ def summarize_prediction_metrics(
 ) -> Tuple[Dict[str, float], Dict[str, float], pd.DataFrame]:
     """Compute aggregate and horizon-wise metrics in normalized and original scales."""
     mean_pred = samples.mean(dim=0)
+    pred_std = samples.std(dim=0, unbiased=False)
 
     samples_original = dataset.inverse_transform(samples)
     targets_original = dataset.inverse_transform(targets)
     mean_pred_original = samples_original.mean(dim=0)
+    pred_std_original = samples_original.std(dim=0, unbiased=False)
 
     lower = torch.quantile(samples, 0.1, dim=0)
     upper = torch.quantile(samples, 0.9, dim=0)
@@ -136,14 +138,14 @@ def summarize_prediction_metrics(
         "rmse": rmse(mean_pred, targets),
         "crps": crps_gaussian(samples, targets),
         "p10_p90_coverage": float(((targets >= lower) & (targets <= upper)).float().mean().item()),
-        "mean_predictive_std": float(samples.std(dim=0).mean().item()),
+        "mean_predictive_std": float(pred_std.mean().item()),
         "mean_interval_width_p10_p90": float((upper - lower).mean().item()),
     }
     summary_original = {
         "mae": mae(mean_pred_original, targets_original),
         "rmse": rmse(mean_pred_original, targets_original),
         "crps": crps_gaussian(samples_original, targets_original),
-        "mean_predictive_std": float(samples_original.std(dim=0).mean().item()),
+        "mean_predictive_std": float(pred_std_original.mean().item()),
         "mean_interval_width_p10_p90": float((upper_original - lower_original).mean().item()),
     }
 
@@ -151,8 +153,8 @@ def summarize_prediction_metrics(
     targets_np = targets.squeeze(-1).numpy()
     mean_pred_original_np = mean_pred_original.squeeze(-1).numpy()
     targets_original_np = targets_original.squeeze(-1).numpy()
-    pred_std_np = samples.std(dim=0).squeeze(-1).numpy()
-    pred_std_original_np = samples_original.std(dim=0).squeeze(-1).numpy()
+    pred_std_np = pred_std.squeeze(-1).numpy()
+    pred_std_original_np = pred_std_original.squeeze(-1).numpy()
     coverage_np = (((targets >= lower) & (targets <= upper)).float().mean(dim=0).squeeze(-1).numpy())
     interval_width_np = (upper - lower).squeeze(-1).numpy()
     interval_width_original_np = (upper_original - lower_original).squeeze(-1).numpy()
@@ -601,7 +603,7 @@ def main():
         help="Number of function evaluations for ODE solver",
     )
     parser.add_argument(
-        "--n_samples", type=int, default=10,
+        "--n_samples", type=int, default=20,
         help="Number of stochastic samples per test case",
     )
     parser.add_argument(
