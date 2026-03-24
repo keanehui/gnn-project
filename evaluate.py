@@ -13,16 +13,23 @@ import sys
 import time
 from typing import Dict, List, Optional, Tuple
 
-import matplotlib
-matplotlib.use("Agg")  # Non-interactive backend for server/GPU machines
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
 import torch
 import torch.nn as nn
 import yaml
 from torch.utils.data import DataLoader
+
+try:
+    import matplotlib
+    matplotlib.use("Agg")  # Non-interactive backend for server/GPU machines
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+except ModuleNotFoundError as e:
+    raise SystemExit(
+        "Missing evaluation dependency. Install project requirements with "
+        "`python3 -m pip install -r requirements.txt` and rerun evaluation."
+    ) from e
 
 from data.dataset import create_dataloaders
 from models.flow_matching import build_model

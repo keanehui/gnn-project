@@ -72,7 +72,7 @@ Third, get the project into Colab:
 Fourth, install dependencies:
 
 ```bash
-!pip install -r requirements.txt
+!python3 -m pip install -r requirements.txt
 ```
 
 Fifth, download the dataset:
@@ -89,6 +89,7 @@ This should create:
 - `data/raw/130.mat`
 
 If working locally instead of Colab, use the same commands without the `!`.
+When installing packages, prefer `python3 -m pip install -r requirements.txt` so the packages go into the same Python interpreter used by `python3 train.py` and `python3 evaluate.py`.
 All command blocks below are written in terminal style; if you run them inside a Colab cell, add `!` in front of each command.
 
 ### Step 2. Both Teammates Follow the Same Training Rule
