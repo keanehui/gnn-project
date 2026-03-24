@@ -105,6 +105,9 @@ After training:
 
 - `evaluate.py` creates model-specific plots
 - `comparison.py` creates the final comparison plots
+- `--n_samples 20` is the standard handover-ready evaluation setting
+- if you want slightly cleaner uncertainty bands and more stable report plots, you may optionally rerun `evaluate.py` on the same `best.pt` with `--n_samples 30` or `40`
+- this optional evaluation rerun does not retrain the model; it only refreshes the saved evaluation artifacts
 
 ### Step 3. Recommended 2-Half Split
 
@@ -152,6 +155,19 @@ Fourth, make sure these files now exist:
 - `outputs/baseline/evaluate/error_by_horizon_nfe16.png`
 - `outputs/baseline/evaluate/uncertainty_by_horizon_nfe16.png`
 - `outputs/baseline/evaluate/training_loss.png`
+
+Optional polish before handover:
+
+- if the baseline result already looks good, you may hand it over now
+- if you want cleaner report figures, rerun evaluation on the same checkpoint with more samples:
+
+```bash
+python3 evaluate.py --checkpoint outputs/baseline/model/best.pt --model baseline --nfe 16 --n_samples 30
+```
+
+- use `30` as the recommended polish setting
+- use `40` only if you have extra time and want even smoother uncertainty plots
+- do not retrain the model for this step
 
 Fifth, give Min-Han the entire folder:
 
@@ -212,6 +228,19 @@ Fourth, make sure these files now exist:
 - `outputs/improved/evaluate/error_by_horizon_nfe4.png`
 - `outputs/improved/evaluate/uncertainty_by_horizon_nfe4.png`
 - `outputs/improved/evaluate/training_loss.png`
+
+Optional polish before final comparison:
+
+- if the improved result already looks good, you may continue directly to the comparison step
+- if you want cleaner report figures, rerun evaluation on the same checkpoint with more samples:
+
+```bash
+python3 evaluate.py --checkpoint outputs/improved/model/best.pt --model improved --nfe 4 --n_samples 30
+```
+
+- use `30` as the recommended polish setting
+- use `40` only if you have extra time and want even smoother uncertainty plots
+- do not retrain the model for this step
 
 Fifth, receive this folder from Ka:
 
