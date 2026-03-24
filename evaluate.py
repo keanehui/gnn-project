@@ -317,13 +317,13 @@ def plot_nfe_latency(
             )
 
     ax.set_xlabel("Number of Function Evaluations (NFE)")
-    ax.set_ylabel("Inference Latency (ms)")
-    ax.set_title("NFE vs. Inference Latency")
-    ax.legend()
+    ax.set_ylabel("Single-Sample Inference Latency (ms)")
+    ax.set_title("NFE vs. Single-Sample Inference Latency")
     ax.set_xscale("log", base=2)
     ax.set_xticks(results_df["nfe"].unique())
     ax.get_xaxis().set_major_formatter(plt.ScalarFormatter())
     ax.axhline(y=1.0, color="red", linestyle="--", alpha=0.5, label="1 ms threshold")
+    ax.legend()
 
     plt.tight_layout()
     plt.savefig(save_path)
@@ -353,7 +353,7 @@ def plot_nfe_accuracy_latency(
 
     ax1.set_xlabel("Number of Function Evaluations (NFE)")
     ax1.set_ylabel(f"{metric.upper()}", color="#1f77b4")
-    ax2.set_ylabel("Latency (ms)", color="#ff7f0e")
+    ax2.set_ylabel("Single-Sample Latency (ms)", color="#ff7f0e")
     ax1.set_xscale("log", base=2)
     ax1.set_xticks(nfe_values)
     ax1.get_xaxis().set_major_formatter(plt.ScalarFormatter())
@@ -361,7 +361,7 @@ def plot_nfe_accuracy_latency(
     lines1, labels1 = ax1.get_legend_handles_labels()
     lines2, labels2 = ax2.get_legend_handles_labels()
     ax1.legend(lines1 + lines2, labels1 + labels2, loc="upper right")
-    ax1.set_title(f"Accuracy-Latency Trade-off: Baseline vs. Improved (OU + OT)")
+    ax1.set_title("Accuracy-Latency Trade-off: Baseline vs. Improved (single-sample)")
 
     plt.tight_layout()
     plt.savefig(save_path)

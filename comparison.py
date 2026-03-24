@@ -208,11 +208,11 @@ def generate_sample_plots(
         for _ in range(20):
             pred = model.sample(ctx, nfe=nfe)
             preds.append(pred[0].cpu().numpy().squeeze())
-        preds = np.array(preds)
+        preds = dataset.inverse_transform(torch.from_numpy(np.array(preds))).numpy()
 
         plot_sample_predictions(
-            context=ctx[0].cpu().numpy().squeeze(),
-            target=tgt.cpu().numpy().squeeze(),
+            context=dataset.inverse_transform(ctx[0].cpu()).numpy().squeeze(),
+            target=dataset.inverse_transform(tgt.cpu()).numpy().squeeze(),
             predictions=preds,
             save_path=os.path.join(results_dir, f"sample_predictions_{model_name.lower()}.png"),
             n_samples=10,

@@ -158,10 +158,10 @@ def create_dataloaders(
     """
     Create train/val/test DataLoaders from configuration.
 
-    Each fault condition is split independently (70/15/15) so that
-    all fault types are represented in every split. This avoids the
-    problem of a global sequential cut leaving some fault types only
-    in val/test.
+    Each fault condition is split independently (70/15/15) on the raw
+    signal timeline before windows are assigned to a split. This keeps
+    all fault types represented in every split while preventing train,
+    validation, and test windows from overlapping across split boundaries.
 
     Args:
         config: Full configuration dictionary.
@@ -183,32 +183,55 @@ def create_dataloaders(
     train_ratio = data_cfg["train_ratio"]
     val_ratio = data_cfg["val_ratio"]
 
-    # Split within each fault condition independently so all fault types
-    # are represented in every split. dataset.signal_boundaries holds
-    # (sig_start, sig_end, fault) in absolute signal-array coordinates.
+    # Split within each fault condition independently on raw signal
+    # coordinates so windows from different splits never overlap.
+    # dataset.signal_boundaries holds (sig_start, sig_end, fault) in
+    # absolute signal-array coordinates.
     window_size = data_cfg["context_length"] + data_cfg["prediction_horizon"]
 
     train_indices, val_indices, test_indices = [], [], []
+    train_segments = []
 
     for sig_start, sig_end, fault in dataset.signal_boundaries:
-        # Collect dataset-level positions (i.e. indices into dataset.indices[])
-        # whose absolute start coordinate belongs to this fault's signal.
-        fault_window_positions = [
-            pos for pos, abs_start in enumerate(dataset.indices)
-            if sig_start <= abs_start < sig_end - window_size + 1
-        ]
+        signal_length = sig_end - sig_start
+        raw_train_end = sig_start + int(signal_length * train_ratio)
+        raw_val_end = raw_train_end + int(signal_length * val_ratio)
+
+        fault_window_positions = []
+        train_fault_indices = []
+        val_fault_indices = []
+        test_fault_indices = []
+
+        for pos, abs_start in enumerate(dataset.indices):
+            if not (sig_start <= abs_start < sig_end):
+                continue
+
+            window_end = abs_start + window_size
+            if window_end > sig_end:
+                continue
+
+            fault_window_positions.append(pos)
+            if window_end <= raw_train_end:
+                train_fault_indices.append(pos)
+            elif raw_train_end <= abs_start and window_end <= raw_val_end:
+                val_fault_indices.append(pos)
+            elif raw_val_end <= abs_start and window_end <= sig_end:
+                test_fault_indices.append(pos)
+
+        train_indices.extend(train_fault_indices)
+        val_indices.extend(val_fault_indices)
+        test_indices.extend(test_fault_indices)
+
+        if raw_train_end > sig_start:
+            train_segments.append(dataset.raw_signal[sig_start:raw_train_end])
 
         n = len(fault_window_positions)
-        n_train = int(n * train_ratio)
-        n_val = int(n * val_ratio)
-
-        # Sequential split within this fault's windows (preserves temporal order)
-        train_indices.extend(fault_window_positions[:n_train])
-        val_indices.extend(fault_window_positions[n_train: n_train + n_val])
-        test_indices.extend(fault_window_positions[n_train + n_val:])
+        n_train = len(train_fault_indices)
+        n_val = len(val_fault_indices)
+        n_test = len(test_fault_indices)
         print(
             f"  {fault:8s}: {n} windows -> "
-            f"train={n_train}, val={n_val}, test={n - n_train - n_val}"
+            f"train={n_train}, val={n_val}, test={n_test}"
         )
 
     print(
@@ -217,20 +240,6 @@ def create_dataloaders(
     )
 
     # Fit normalization on the training split only to avoid test leakage.
-    train_segments = []
-    for sig_start, sig_end, fault in dataset.signal_boundaries:
-        fault_window_positions = [
-            pos for pos, abs_start in enumerate(dataset.indices)
-            if sig_start <= abs_start < sig_end - window_size + 1
-        ]
-        n_train = int(len(fault_window_positions) * train_ratio)
-        if n_train == 0:
-            continue
-
-        last_train_window_start = dataset.indices[fault_window_positions[n_train - 1]]
-        train_segment_end = last_train_window_start + window_size
-        train_segments.append(dataset.raw_signal[sig_start:train_segment_end])
-
     if not train_segments:
         raise RuntimeError("Could not compute training-split normalization statistics.")
 

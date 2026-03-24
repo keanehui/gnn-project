@@ -140,6 +140,7 @@ def compute_ot_coupling(
 
     # Cost matrix: squared Euclidean distance
     M = ot.dist(x0_flat, x1_flat, metric="sqeuclidean")
+    M = M / (np.mean(M) + 1e-8)
 
     # Uniform marginals
     a = np.ones(batch_size) / batch_size
@@ -147,6 +148,9 @@ def compute_ot_coupling(
 
     # Sinkhorn OT plan
     plan = ot.sinkhorn(a, b, M, reg=reg, numItermax=max_iter)
+    if not np.all(np.isfinite(plan)):
+        print("[WARNING] Sinkhorn returned a non-finite transport plan. Falling back to uncoupled batch.")
+        return x0, x1
 
     # Use the OT plan to find the best permutation (argmax per row)
     permutation = plan.argmax(axis=1)
