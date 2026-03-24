@@ -2,28 +2,28 @@
   "model": "baseline",
   "checkpoint": "outputs/baseline/model/best.pt",
   "nfe": 16,
-  "n_samples": 20,
+  "n_samples": 30,
   "parameter_count": 2615233,
   "metrics_normalized": {
-    "mae": 0.279960960149765,
-    "rmse": 0.6552674174308777,
-    "crps": 0.20934371450229694,
-    "p10_p90_coverage": 0.5665780305862427,
-    "mean_predictive_std": 0.1955682784318924,
-    "mean_interval_width_p10_p90": 0.46880415081977844
+    "mae": 0.27931880950927734,
+    "rmse": 0.6539533138275146,
+    "crps": 0.20979131581751925,
+    "p10_p90_coverage": 0.5847739577293396,
+    "mean_predictive_std": 0.19743561744689941,
+    "mean_interval_width_p10_p90": 0.48183661699295044
   },
   "metrics_original_scale": {
-    "mae": 0.09397013485431671,
-    "rmse": 0.21994341909885406,
-    "crps": 0.07026716380527145,
-    "mean_predictive_std": 0.06564336270093918,
-    "mean_interval_width_p10_p90": 0.15735618770122528
+    "mae": 0.09375461935997009,
+    "rmse": 0.21950232982635498,
+    "crps": 0.0704173809603641,
+    "mean_predictive_std": 0.0662701353430748,
+    "mean_interval_width_p10_p90": 0.1617306023836136
   },
   "latency_ms": {
-    "mean_ms": 71.6424313300081,
-    "std_ms": 1.3767624173263528,
-    "min_ms": 69.53812599999765,
-    "max_ms": 75.68874000003234,
+    "mean_ms": 70.97379567999269,
+    "std_ms": 2.2538459924581495,
+    "min_ms": 69.42597999977806,
+    "max_ms": 84.54187200004526,
     "batch_size": 1
   },
   "dataset": {
