@@ -107,9 +107,9 @@ class CWRUDataset(Dataset):
 
         # Concatenate and normalize (z-score)
         self.raw_signal = np.concatenate(signals)
-        self.mean = self.raw_signal.mean()
-        self.std = self.raw_signal.std()
-        self.signal = (self.raw_signal - self.mean) / (self.std + 1e-8)
+        self.mean = 0.0
+        self.std = 1.0
+        self.signal = self.raw_signal.copy()
 
         # Create sliding window indices
         window_size = context_length + prediction_horizon
@@ -144,6 +144,12 @@ class CWRUDataset(Dataset):
     def inverse_transform(self, x: torch.Tensor) -> torch.Tensor:
         """Undo z-score normalization."""
         return x * self.std + self.mean
+
+    def set_normalization(self, mean: float, std: float) -> None:
+        """Normalize the dataset using training-split statistics only."""
+        self.mean = float(mean)
+        self.std = float(max(std, 1e-8))
+        self.signal = (self.raw_signal - self.mean) / self.std
 
 
 def create_dataloaders(
@@ -208,6 +214,31 @@ def create_dataloaders(
     print(
         f"Total — train: {len(train_indices)}, "
         f"val: {len(val_indices)}, test: {len(test_indices)}"
+    )
+
+    # Fit normalization on the training split only to avoid test leakage.
+    train_segments = []
+    for sig_start, sig_end, fault in dataset.signal_boundaries:
+        fault_window_positions = [
+            pos for pos, abs_start in enumerate(dataset.indices)
+            if sig_start <= abs_start < sig_end - window_size + 1
+        ]
+        n_train = int(len(fault_window_positions) * train_ratio)
+        if n_train == 0:
+            continue
+
+        last_train_window_start = dataset.indices[fault_window_positions[n_train - 1]]
+        train_segment_end = last_train_window_start + window_size
+        train_segments.append(dataset.raw_signal[sig_start:train_segment_end])
+
+    if not train_segments:
+        raise RuntimeError("Could not compute training-split normalization statistics.")
+
+    train_signal = np.concatenate(train_segments)
+    dataset.set_normalization(train_signal.mean(), train_signal.std())
+    print(
+        f"Normalization — mean={dataset.mean:.6f}, std={dataset.std:.6f} "
+        f"(fit on training split only)"
     )
 
     requested_workers = int(train_cfg.get("num_workers", 0))

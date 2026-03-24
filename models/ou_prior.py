@@ -152,6 +152,6 @@ def compute_ot_coupling(
     permutation = plan.argmax(axis=1)
 
     # Reorder x0 according to the permutation
-    x0_coupled = x0[torch.from_numpy(permutation).long()]
+    x0_coupled = x0[torch.from_numpy(permutation).long().to(x0.device)]
 
     return x0_coupled, x1

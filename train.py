@@ -33,6 +33,7 @@ from tqdm import tqdm
 
 from data.dataset import create_dataloaders
 from models.flow_matching import build_model
+from utils.checkpoints import load_model_state, unwrap_model
 
 
 # ==============================================================================
@@ -41,6 +42,8 @@ from models.flow_matching import build_model
 
 class Trainer:
     """Main training loop for Flow Matching models."""
+
+    CSV_FIELDS = ["epoch", "train_loss", "val_loss", "lr", "best_val_loss"]
 
     def __init__(
         self,
@@ -130,17 +133,18 @@ class Trainer:
 
         # CSV log for training curves
         self.csv_path = os.path.join(self.ckpt_dir, "training_log.csv")
-        with open(self.csv_path, "w", newline="") as f:
-            writer = csv.writer(f)
-            writer.writerow(["epoch", "train_loss", "val_loss", "lr", "best_val_loss"])
 
     def train(self, resume_from: Optional[str] = None) -> None:
         """Run the full training loop."""
         if resume_from:
             self.load_checkpoint(resume_from)
+            self._prepare_csv_log(resume_epoch=self.start_epoch)
+        else:
+            self._prepare_csv_log()
 
         total_epochs = self.train_cfg["epochs"]
         grad_clip = self.train_cfg.get("grad_clip_norm", 1.0)
+        last_completed_epoch = self.start_epoch - 1
 
         print(f"\n{'='*60}")
         print(f"Training {self.model_type} model for {total_epochs} epochs")
@@ -224,6 +228,7 @@ class Trainer:
                     print(f"  (patience limit: {self.patience} rounds)")
                     print(f"  Best validation loss: {self.best_val_loss:.6f}")
                     print(f"{'='*60}\n")
+                    last_completed_epoch = epoch
                     break
             else:
                 print(
@@ -234,26 +239,58 @@ class Trainer:
                 # Log to CSV (val_loss not evaluated this epoch)
                 self._log_csv(epoch + 1, avg_train_loss, None)
 
-        # Guarantee a final checkpoint exists even if no validation step was reached.
-        latest_path = os.path.join(self.ckpt_dir, self.latest_ckpt_name)
-        if not os.path.exists(latest_path):
-            self.save_checkpoint(max(self.start_epoch, 0), self.latest_ckpt_name)
+            last_completed_epoch = epoch
+
+        # Always save the final training state, even if the last epoch was not an eval epoch.
+        final_epoch = max(last_completed_epoch, 0)
+        self.save_checkpoint(final_epoch, self.latest_ckpt_name)
+
+        best_path = os.path.join(self.ckpt_dir, "best.pt")
+        if not os.path.exists(best_path):
+            self.save_checkpoint(final_epoch, "best.pt")
 
         print(f"\nTraining complete. Best val loss: {self.best_val_loss:.4f}")
         print(f"Training log saved to: {self.csv_path}")
+
+    def _prepare_csv_log(self, resume_epoch: Optional[int] = None) -> None:
+        """
+        Initialize or truncate the CSV log.
+
+        When resuming, retain only rows up to the checkpoint epoch so the
+        training curve stays continuous and report-ready.
+        """
+        retained_rows = []
+        if resume_epoch is not None and os.path.exists(self.csv_path):
+            with open(self.csv_path, "r", newline="") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    try:
+                        epoch = int(row["epoch"])
+                    except (KeyError, TypeError, ValueError):
+                        continue
+                    if epoch <= resume_epoch:
+                        retained_rows.append(row)
+
+        with open(self.csv_path, "w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=self.CSV_FIELDS)
+            writer.writeheader()
+            for row in retained_rows:
+                writer.writerow(row)
 
     def _log_csv(self, epoch: int, train_loss: float, val_loss: float = None) -> None:
         """Append one row to the training CSV log."""
         lr = self.optimizer.param_groups[0]["lr"]
         with open(self.csv_path, "a", newline="") as f:
             writer = csv.writer(f)
-            writer.writerow([
-                epoch,
-                f"{train_loss:.6f}",
-                f"{val_loss:.6f}" if val_loss is not None else "",
-                f"{lr:.2e}",
-                f"{self.best_val_loss:.6f}",
-            ])
+            writer.writerow(
+                [
+                    epoch,
+                    f"{train_loss:.6f}",
+                    f"{val_loss:.6f}" if val_loss is not None else "",
+                    f"{lr:.2e}",
+                    f"{self.best_val_loss:.6f}",
+                ]
+            )
 
     @torch.no_grad()
     def validate(self) -> float:
@@ -284,12 +321,13 @@ class Trainer:
             {
                 "epoch": epoch,
                 "global_step": self.global_step,
-                "model_state_dict": self.model.state_dict(),
+                "model_state_dict": unwrap_model(self.model).state_dict(),
                 "optimizer_state_dict": self.optimizer.state_dict(),
                 "scheduler_state_dict": (
                     self.scheduler.state_dict() if self.scheduler else None
                 ),
                 "best_val_loss": self.best_val_loss,
+                "epochs_without_improvement": self.epochs_without_improvement,
                 "config": self.config,
                 "model_type": self.model_type,
             },
@@ -300,13 +338,14 @@ class Trainer:
     def load_checkpoint(self, path: str) -> None:
         """Load model checkpoint."""
         ckpt = torch.load(path, map_location=self.device, weights_only=False)
-        self.model.load_state_dict(ckpt["model_state_dict"])
+        load_model_state(self.model, ckpt["model_state_dict"])
         self.optimizer.load_state_dict(ckpt["optimizer_state_dict"])
         if self.scheduler and ckpt.get("scheduler_state_dict"):
             self.scheduler.load_state_dict(ckpt["scheduler_state_dict"])
         self.start_epoch = ckpt["epoch"] + 1
         self.global_step = ckpt["global_step"]
         self.best_val_loss = ckpt.get("best_val_loss", float("inf"))
+        self.epochs_without_improvement = ckpt.get("epochs_without_improvement", 0)
         print(f"Resumed from epoch {self.start_epoch} (step {self.global_step})")
 
 

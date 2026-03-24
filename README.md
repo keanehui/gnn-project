@@ -36,11 +36,11 @@ Outputs generated during training/evaluation:
 outputs/
 ├── baseline/
 │   ├── model/                    # best.pt, latest.pt, and training_log.csv
-│   └── evaluate/                 # evaluation plots and metrics
+│   └── evaluate/                 # report-ready metrics tables and plots
 ├── improved/
 │   ├── model/
 │   └── evaluate/
-└── ablation/                     # Ablation study CSVs and plots
+└── ablation/                     # NFE ablation CSVs and comparison plots
 ```
 
 ## Run with Google Colab
@@ -98,16 +98,18 @@ Train improved:
 !python3 train.py --model improved
 ```
 
-Model checkpoints and logs are saved under `outputs/baseline/model` and `outputs/improved/model`.
+Training saves only checkpoints and loss logs under `outputs/baseline/model` and `outputs/improved/model`.
+No plots are generated during training, so nothing interrupts the Colab run.
 
 ### 6. Evaluate models
 
 ```bash
-!python3 evaluate.py --checkpoint outputs/baseline/model/best.pt --model baseline --nfe 16 --plot
-!python3 evaluate.py --checkpoint outputs/improved/model/best.pt --model improved --nfe 4 --plot
+!python3 evaluate.py --checkpoint outputs/baseline/model/best.pt --model baseline --nfe 16
+!python3 evaluate.py --checkpoint outputs/improved/model/best.pt --model improved --nfe 4
 ```
 
-Evaluation figures and metrics (JSON + plots) are saved under each model folder in `outputs/.../evaluate`.
+Evaluation saves JSON metrics, per-horizon CSV tables, and plots under each model folder in `outputs/.../evaluate`.
+This is where you get the figures for the report.
 
 ### 7. Run NFE ablation
 
@@ -169,7 +171,8 @@ python3 data/download.py
 #### 3. Train Baseline Model
 
 - **Reads:** Configuration from `config.yaml` and the datasets from `data/raw/`.
-- **Outputs:** Model checkpoints (e.g., `best.pt`) and training logs saved to `outputs/baseline/model/`.
+- **Outputs:** Model checkpoints (`best.pt`, `latest.pt`) and loss tracking (`training_log.csv`) saved to `outputs/baseline/model/`.
+- **Important:** Training does not save plots.
 
 **Foreground Training (Terminal stays open):**
 
@@ -179,9 +182,29 @@ python3 train.py --model baseline
 
 ---
 
-### Part 2: Improved Model Training, Evaluation & Ablation Study (Min-Han Yeh)
+#### 4. Evaluate Baseline Model for Report Figures
 
-#### 4. Train Improved Model
+- **Reads:** Trained baseline checkpoint from `outputs/baseline/model/` and `config.yaml`.
+- **Outputs:** Report-ready metrics and plots saved to `outputs/baseline/evaluate/`.
+
+```bash
+python3 evaluate.py --checkpoint outputs/baseline/model/best.pt --model baseline --nfe 16
+```
+
+#### 5. Run NFE Ablation Study for Experiments
+
+- **Reads:** Trained model checkpoints, dataset, and `config.yaml`.
+- **Outputs:** CSV results table and NFE comparison plots saved to `outputs/ablation/`.
+
+```bash
+python3 comparison.py \
+    --checkpoint_baseline outputs/baseline/model/best.pt \
+    --checkpoint_improved outputs/improved/model/best.pt
+```
+
+### Part 2: Improved Model Training & Comparative Analysis (Min-Han Yeh)
+
+#### 6. Train Improved Model
 
 - **Reads:** Configuration from `config.yaml` and the datasets from `data/raw/`.
 - **Outputs:** Model checkpoints (e.g., `best.pt`) and training logs saved to `outputs/improved/model/`.
@@ -192,17 +215,17 @@ python3 train.py --model baseline
 python3 train.py --model improved
 ```
 
-#### 5. Evaluate Models
+#### 7. Evaluate Models
 
 - **Reads:** Trained model checkpoints from Part 1 (`outputs/baseline/model/best.pt`, `outputs/improved/model/best.pt`) and `config.yaml`.
 - **Outputs:** Evaluation plots and metrics in `outputs/baseline/evaluate/` and `outputs/improved/evaluate/`.
 
 ```bash
-python3 evaluate.py --checkpoint outputs/baseline/model/best.pt --model baseline --nfe 16 --plot
-python3 evaluate.py --checkpoint outputs/improved/model/best.pt --model improved --nfe 4 --plot
+python3 evaluate.py --checkpoint outputs/baseline/model/best.pt --model baseline --nfe 16
+python3 evaluate.py --checkpoint outputs/improved/model/best.pt --model improved --nfe 4
 ```
 
-#### 6. NFE Ablation Study
+#### 8. NFE Ablation Study
 
 - **Reads:** Trained model checkpoints for both models, the dataset, and `config.yaml`.
 - **Outputs:** CSV results table and NFE comparison plots saved to `outputs/ablation/`.

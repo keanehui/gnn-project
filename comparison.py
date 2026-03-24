@@ -32,7 +32,9 @@ from evaluate import (
     plot_nfe_latency,
     plot_sample_predictions,
     rmse,
+    summarize_prediction_metrics,
 )
+from utils.checkpoints import load_model_state
 
 
 def load_trained_model(
@@ -41,7 +43,7 @@ def load_trained_model(
     """Load a trained model from checkpoint."""
     model = build_model(config, model_type)
     ckpt = torch.load(checkpoint_path, map_location=device, weights_only=False)
-    model.load_state_dict(ckpt["model_state_dict"])
+    load_model_state(model, ckpt["model_state_dict"])
     model = model.to(device)
     model.eval()
     print(f"Loaded {model_type} model from {checkpoint_path}")
@@ -85,7 +87,7 @@ def run_ablation(
 
     # Get a representative context batch for latency measurement
     context_batch, _ = next(iter(test_loader))
-    context_batch = context_batch.to(device)
+    context_batch = context_batch[:1].to(device)
 
     results = []
 
@@ -127,6 +129,11 @@ def run_ablation(
             mae_val = mae(mean_preds_t, all_targets_t)
             rmse_val = rmse(mean_preds_t, all_targets_t)
             crps_val = crps_gaussian(all_preds_t, all_targets_t)
+            _, metrics_original, _ = summarize_prediction_metrics(
+                samples=all_preds_t,
+                targets=all_targets_t,
+                dataset=dataset,
+            )
 
             print(f"    MAE:  {mae_val:.6f}")
             print(f"    RMSE: {rmse_val:.6f}")
@@ -147,10 +154,14 @@ def run_ablation(
                 "mae": mae_val,
                 "rmse": rmse_val,
                 "crps": crps_val,
+                "mae_original": metrics_original["mae"],
+                "rmse_original": metrics_original["rmse"],
+                "crps_original": metrics_original["crps"],
                 "latency_mean_ms": latency["mean_ms"],
                 "latency_std_ms": latency["std_ms"],
                 "latency_min_ms": latency["min_ms"],
                 "latency_max_ms": latency["max_ms"],
+                "latency_batch_size": 1,
             })
 
     df = pd.DataFrame(results)
@@ -250,6 +261,7 @@ def main():
         # Generate NFE comparison plots
         plot_nfe_accuracy(results_df, os.path.join(results_dir, "nfe_vs_mae.png"), metric="mae")
         plot_nfe_accuracy(results_df, os.path.join(results_dir, "nfe_vs_rmse.png"), metric="rmse")
+        plot_nfe_accuracy(results_df, os.path.join(results_dir, "nfe_vs_crps.png"), metric="crps")
         plot_nfe_latency(results_df, os.path.join(results_dir, "nfe_vs_latency.png"))
         plot_nfe_accuracy_latency(
             results_df, os.path.join(results_dir, "nfe_accuracy_latency.png"), metric="mae"
