@@ -1,0 +1,36 @@
+{
+  "model": "baseline",
+  "checkpoint": "outputs/baseline/model/best.pt",
+  "nfe": 16,
+  "n_samples": 20,
+  "parameter_count": 2615233,
+  "metrics_normalized": {
+    "mae": 0.279960960149765,
+    "rmse": 0.6552674174308777,
+    "crps": 0.20934371450229694,
+    "p10_p90_coverage": 0.5665780305862427,
+    "mean_predictive_std": 0.1955682784318924,
+    "mean_interval_width_p10_p90": 0.46880415081977844
+  },
+  "metrics_original_scale": {
+    "mae": 0.09397013485431671,
+    "rmse": 0.21994341909885406,
+    "crps": 0.07026716380527145,
+    "mean_predictive_std": 0.06564336270093918,
+    "mean_interval_width_p10_p90": 0.15735618770122528
+  },
+  "latency_ms": {
+    "mean_ms": 71.6424313300081,
+    "std_ms": 1.3767624173263528,
+    "min_ms": 69.53812599999765,
+    "max_ms": 75.68874000003234,
+    "batch_size": 1
+  },
+  "dataset": {
+    "context_length": 256,
+    "prediction_horizon": 64,
+    "test_windows": 1410,
+    "normalization_mean": 0.015609374269843102,
+    "normalization_std": 0.33565443754196167
+  }
+}
