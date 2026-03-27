@@ -1,0 +1,36 @@
+{
+  "model": "improved",
+  "checkpoint": "outputs/improved/model/best.pt",
+  "nfe": 4,
+  "n_samples": 30,
+  "parameter_count": 2615233,
+  "metrics_normalized": {
+    "mae": 0.2816685736179352,
+    "rmse": 0.6366149187088013,
+    "crps": 0.22672385212622193,
+    "p10_p90_coverage": 0.40515291690826416,
+    "mean_predictive_std": 0.13070827722549438,
+    "mean_interval_width_p10_p90": 0.32006198167800903
+  },
+  "metrics_original_scale": {
+    "mae": 0.09454330801963806,
+    "rmse": 0.213682621717453,
+    "crps": 0.07610086804549945,
+    "mean_predictive_std": 0.04387281835079193,
+    "mean_interval_width_p10_p90": 0.10743020474910736
+  },
+  "latency_ms": {
+    "mean_ms": 21.743330117315054,
+    "std_ms": 0.5806550908554641,
+    "min_ms": 21.1185272783041,
+    "max_ms": 24.876924231648445,
+    "batch_size": 1
+  },
+  "dataset": {
+    "context_length": 256,
+    "prediction_horizon": 64,
+    "test_windows": 1410,
+    "normalization_mean": 0.015609374269843102,
+    "normalization_std": 0.33565443754196167
+  }
+}
